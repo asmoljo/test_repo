@@ -1,0 +1,69 @@
+NAPOMENA! systemctl komanda objedinjava u sebi stare komande 'service' i 'chkconfig'
+systemctl shutdown  (gasi server)
+systemctl reboot	(restarta server)
+
+OPCENITO UNIT
+systemctl list-unit-files	(izlistava sve unite da li su 'enabled' il 'disabled',odnosno tako se vidi koji sve uniti postoje na serveru)
+systemctl list-units		(izlistava unite koji su u statusu active. kolona ACTIVE je 'active')
+systemctl list-units --all   (izlistava unite koji su u svim statusima)
+NAPOMENA!  -- primjetio sam da je opcija 'list-units' izgleda defaultna,tako da ako nist ne napisemo onda se ona podrazumijeva
+
+SERVISI
+systemctl list-units --type service	(izlistava servise u statusu 'active')
+systemctl list-units --type service -all	(izlistava servise u svim statusima)
+systemctl list-units --failed -t service    (izlistava failed servise)
+systemctl list-unit-files --type service	(izlistava sve servise da li su 'enabled' il 'disabled',odnosno tako se vidi koji sve servisi postoje na serveru))
+systemctl is-enabled httpd			(izlistava enable/disable pojedinog servisa)
+systemctl status httpd		(izlistava status servisa httpd)
+systemctl show httpd		(izlistava propertie unita/servisa httpd)
+systemctl show httpd -p Slice		(izlistava samo propertie 'Slice' od httpd unita/servisa)
+systemctl is-active httpd	(provjerava da li je servis aktivan-startan)
+systemctl -H 10.1.212.121 is-active httpd	(remote pokretanje komande.inace radi sve i sto lokalno moze)
+systemctl stop httpd		(stopira servis httpd)
+systemctl start httpd		(starta servis httpd)
+systemctl restarta httpd		(restarta servis httpd)
+systemctl reload httpd		(reloada konfiguraciju servisa httpd...tocnije njegov specificni conf fajl...npr. httpd.conf, vsftpd.conf....a ne conf fajl od unita u folderu /usr/lib/systemd/system/)
+systemctl mask httpd		(blokira servis da se nikako ne moze startati..to je jaca verzija disable.)
+systemctl unmask httpd		(odblokira servis koji je bio maskiran-blokiran sa 'mask' komandom)
+systemctl enable httpd.service	(ovo bi bilo ekvivalentno staroj komandi 'chkconfig httpd on')
+systemctl enable --now httpd.service	(kao red iznad + odmah i starta servis)
+systemctl list-dependencies basic.target	(izlistava tree/stablo sa prikazom drugih unita koji moraju biti startani da bi unit 'basic.target' mogao biti startan)
+systemctl list-dependencies --reverse basic.target	(obrnuto od reda iznad, tj. ispisuje unite kojima je potrebno da unit 'basic.target' bude startan da bi oni 
+																		mogli biti startani)
+
+TARGETI
+systemctl get-default		(vraca defaultni target. ekvivalent za target u starom sistemu je 'cat /etc/inittab')
+systemctl list-units -t target 	(izlistava trenutno uèitane(loaded) targete,ali samo aktivne.ekvivalent starom sistemu je komanda 'runlevel' i onda gledat ruèno koje su skripte u folderu za taj runlevel)
+systemctl list-units -t target --all	(izlistava trenutno uèitane(loaded) targete i aktivne i neaktivne)
+systemctl list-unit-files -t target		(izlistava koji sve targeti postoje na serveru,znaci i oni koji nisu ucitani)
+systemctl set-default multi-user.target	 (mijenja defaultni target u tip 'multi-user.target')
+systemctl isolate graphical.target		(odmah mijenja target...odnosno stopira sve servise(i one ovisne o njemu) koji su definirani u trenutnom targetu i pokrece sve servise koji su definirani u 'graphical.target'...ovo 
+										je kao da smo u starom sistemu napisali 'init 5' a trenutno smo se nalazili u runlevelu 3. NAPOMENA! ne mogu svi targeti biti pozvani komandom isolated.dobije se
+										poruka na ekran.npr. neki targeti mogu biti samo pozvani od drugih targeta.mogu biti isolate ako im je property 'AllowIsolate=yes')
+systemctl rescue	(ekvivalent runlevelu 1 u starom sistemu,tj. single user mod)
+systemctl isolate rescue.target	(isto kao i red iznad)
+systemctl emergency 	(ekvivalent, tj. nesto najslicnije na starom sistemu bilo bi 'sulogin' shell mod.tu je filesystem mountan u read only modu)
+
+NAPOMENA! - kod target unita oni pozivaju jedni druge, tj ovisni su jedni o drugima. npr kad se starta target 'graphical.target' on starta servise koji su u njemu definirani npr. httpd.service,
+			 vsftpd.service, ali i 'multi-user.target' jer on opet starta neke druge servise koji nisu ukljuceni u 'graphical.target' kao sto je npr 'NetworkManager.service' i sl.
+		   'systemctl list-dependencies graphical.target | grep target'  ovom komandom se fino ispise meðuovisnost pojedinih targeta.
+		   -ne mogu svi uniti tipa target biti 'isolated', nego samo oni u cijim conf fajlama stoji property 'Allowisolate=yes'
+		   -kad systemd preuzme kontrolu kod startanja servera,onda krece sa startanjem 'default.target' ,a to je ustvari simbolic link na onaj target koji smo postavili komandom 'systemctl set-default'
+		   
+/etc/systemd/system/default.target		(datoteka u kojoj pise koji je defaultni target. to je ekvivalent za fajl '/etc/inittab'.Ona se updejta kad pokrenemo komandu 'systemctl set-default <TARGET>')
+
+DEBUGGING
+systemctl enable debug-shell.service	(ako se ovaj servis enejbla,onda se kod boot-anja moze koristiti 'early debug shell' koji je automatski logiran sa root userom.to sluzi za 
+											troubleshooting tijekom boot-anja i korisna je stvar.u njega se dodje sa CTRL+ALT+F9.opasno je to stalno drzati upaljeno jer kod svakog bootanja
+											ostavlja 'root enabled shell' sa odma ulogiranim root userom)
+											
+											
+systemctl list-jobs  (kod bootanja izlista unite/servise koji se startaju.oni mogu biti u statusu 'running' ili 'waiting'.da bi ovi waiting mogli zavrsiti moraju prvo odraditi ovi
+						runing statusa, ako neki dugo stoji running onda znamo da je on nesto zaglavio kod bootanja. ovo je dobra stvar kod troubleshootinga bootanja i dobro ju je 
+						koristiti u kombinaciji sa redom iznad, tj. servisom 'debug-shell.service',a normalno se moze koristiti i kad je server startan uredno..npr startamo neki servis a nista se ne dogadja i onda mozemo ovu komandu pokrenut i vidit je ima sto zaglavljeno)
+						
+KONFIG.DATOTEKE
+/usr/lib/systemd/system/	(ovaj folder je ekvivalentan starom sistemu tj. folderu '/etc/init.d/' )
+/etc/systemd/system			(ovaj folder je ekvivalentan starom sistemu tj. folderima za runlevele '/etc/rc5.d' ili '/etc/rc3.d' ...)
+/etc/systemd/system/multi-user.target.wants		(ovaj folder je ekvivalentan starom sistemu i folderu za runlevel 3 tj. '/etc/rc3.d' . U tom folderu su soft linkovi na folder sa pravim skriptama tj.
+												  /usr/lib/systemd/system/)
